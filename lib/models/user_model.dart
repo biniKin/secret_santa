@@ -6,6 +6,7 @@ class UserModel {
   final String email;
   final bool isAdmin;
   final bool hasMatch;
+  
 
   UserModel({
     required this.userId,
