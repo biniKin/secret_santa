@@ -82,11 +82,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(const AuthLoading());
     
     try {
-      // Check if user is logged in locally
-      final localUser = await _storageService.getUserLocally();
-      
-      if (localUser != null && _authService.currentUser != null) {
-        emit(AuthAuthenticated(user: localUser));
+      // Check if user is logged in with Firebase
+      if (_authService.currentUser != null) {
+        final userData = await _storageService.getUserFromFirestore(
+          _authService.currentUser!.uid,
+        );
+        
+        if (userData != null) {
+          emit(AuthAuthenticated(user: userData));
+        } else {
+          emit(const AuthUnauthenticated());
+        }
       } else {
         emit(const AuthUnauthenticated());
       }

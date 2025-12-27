@@ -29,8 +29,6 @@ class AuthService {
         );
 
         if (userData != null) {
-          // Save locally
-          await _storageService.saveUserLocally(userData);
           return userData;
         }
       }
@@ -66,9 +64,6 @@ class AuthService {
         // Save to Firestore
         await _storageService.saveUserToFirestore(user);
 
-        // Save locally
-        await _storageService.saveUserLocally(user);
-
         // Update display name
         await userCredential.user!.updateDisplayName(name);
 
@@ -84,7 +79,6 @@ class AuthService {
 
   Future<void> logOut() async {
     try {
-      await _storageService.clearLocalUser();
       await _auth.signOut();
     } catch (e) {
       throw 'An error occurred during logout: $e';

@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:secrete_santa/services/auth_service.dart';
+import 'package:secrete_santa/ui/create_group/create_group_bloc/create_bloc.dart';
+import 'package:secrete_santa/ui/create_group/create_group_bloc/create_event.dart';
+import 'package:secrete_santa/ui/create_group/create_group_bloc/create_state.dart';
 
 class CreateGroupPage extends StatefulWidget {
   const CreateGroupPage({super.key});
@@ -12,8 +17,8 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
   final _formKey = GlobalKey<FormState>();
   final _groupNameController = TextEditingController();
   final _budgetController = TextEditingController();
+  final _authService = AuthService();
   DateTime? _selectedDate;
-  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -48,31 +53,109 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
     }
   }
 
-  Future<void> _handleCreateGroup() async {
+  Future<void> _handleCreateGroup() {
     if (_formKey.currentState!.validate()) {
       if (_selectedDate == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please select an exchange date')),
         );
-        return;
+        return Future.value();
       }
 
-      setState(() => _isLoading = true);
-
-      // TODO: Implement group creation logic
-      await Future.delayed(const Duration(seconds: 2));
-
-      setState(() => _isLoading = false);
-
-      if (mounted) {
-        Navigator.pop(context);
+      final userId = _authService.currentUser?.uid;
+      if (userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User not authenticated')),
+        );
+        return Future.value();
       }
+
+      context.read<CreateGroupBloc>().add(
+        CreateGroupSubmitEvent(
+          groupName: _groupNameController.text.trim(),
+          exchangeDate: _selectedDate!,
+          adminId: userId,
+          budget: _budgetController.text.trim().isEmpty 
+              ? null 
+              : _budgetController.text.trim(),
+        ),
+      );
     }
+    return Future.value();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BlocListener<CreateGroupBloc, CreateGroupState>(
+      listener: (context, state) {
+        if (state is CreateGroupSuccess) {
+          // Show success dialog with group code
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              title: const Text('Group Created!'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Your group has been created successfully!'),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFE8E8),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        const Text(
+                          'Group Code',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          state.groupCode,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFAD2E2E),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Share this code with participants to join the group.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Close dialog
+                    Navigator.of(context).pop(); // Go back to home
+                  },
+                  child: const Text('Done'),
+                ),
+              ],
+            ),
+          );
+        } else if (state is CreateGroupError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      },
+      child: Scaffold(
       backgroundColor: const Color(0xFFFFE8E8),
       body: SafeArea(
         child: Stack(
@@ -167,7 +250,8 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                         TextFormField(
                           controller: _groupNameController,
                           decoration: InputDecoration(
-                            hintText: "e.g., Office Secret Santa 2024",
+                            hintText: "Friends Secret Santa",
+                            hintStyle: TextStyle(color: Colors.grey),
                             prefixIcon: const Icon(Icons.group, color: Color(0xFFAD2E2E)),
                             filled: true,
                             fillColor: const Color(0xFFFFE8E8),
@@ -245,6 +329,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                           keyboardType: TextInputType.number,
                           decoration: InputDecoration(
                             hintText: "e.g., 50",
+                            hintStyle: TextStyle(color: Colors.grey),
                             prefixIcon: const Icon(Icons.attach_money, color: Color(0xFFAD2E2E)),
                             filled: true,
                             fillColor: const Color(0xFFFFE8E8),
@@ -280,45 +365,53 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                         ),
 
                         const SizedBox(height: 32),
-                        
+
                         // Create Button
-                        ElevatedButton(
-                          onPressed: _isLoading ? null : _handleCreateGroup,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFAD2E2E),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                  ),
-                                )
-                              : const Text(
-                                  'Create Group',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                        BlocBuilder<CreateGroupBloc, CreateGroupState>(
+                          builder: (context, state) {
+                            final isLoading = state is CreateGroupLoading;
+                            return ElevatedButton(
+                              onPressed: isLoading ? null : _handleCreateGroup,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFAD2E2E),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
+                                elevation: 0,
+                              ),
+                              child: isLoading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Create Group',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                            );
+                          },
                         ),
+                        
                       ],
                     ),
                   ),
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
+              )
+            )
+          ]
+        )
+      )
+    )
     );
+          
   }
 }

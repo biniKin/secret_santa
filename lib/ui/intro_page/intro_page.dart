@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:secrete_santa/ui/auth_page/login_page.dart';
+import 'package:secrete_santa/ui/auth_page/signup_page.dart';
 
 class IntroPage extends StatelessWidget {
   const IntroPage({super.key});
@@ -77,7 +79,9 @@ class IntroPage extends StatelessWidget {
               // Get Started Button
               ElevatedButton(
                 onPressed: () {
-                  // TODO: Navigate to sign up page
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SignupPage()),
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
@@ -99,6 +103,28 @@ class IntroPage extends StatelessWidget {
               const SizedBox(height: 16),
               
               // Sign In Button
+              OutlinedButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const LoginPage()),
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  side: const BorderSide(color: Colors.white, width: 2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Sign In',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
               
               const SizedBox(height: 24),
             ],

@@ -1,8 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:secrete_santa/ui/group_info_page/group_info_bloc/group_info_bloc.dart';
+import 'package:secrete_santa/ui/group_info_page/group_info_bloc/group_info_event.dart';
+import 'package:secrete_santa/ui/group_info_page/group_info_bloc/group_info_state.dart';
 
 class GroupDetailsPage extends StatefulWidget {
-  const GroupDetailsPage({super.key});
+  final String groupId;
+  final String groupName;
+
+  const GroupDetailsPage({
+    super.key,
+    required this.groupId,
+    required this.groupName,
+  });
 
   @override
   State<GroupDetailsPage> createState() => _GroupDetailsPageState();
@@ -10,73 +22,75 @@ class GroupDetailsPage extends StatefulWidget {
 
 class _GroupDetailsPageState extends State<GroupDetailsPage> {
   static const double headerHeight = 200;
-  
-  // TODO: Replace with actual data from Firebase
-  final String groupName = "Office Secret Santa 2024";
-  final String groupCode = "ABC123";
-  final String exchangeDate = "25/12/2024";
-  
-  final bool isAdmin = true;
-  final List<Map<String, dynamic>> members = [
-    {"name": "John Doe", "isAdmin": true, "hasMatch": true},
-    {"name": "Jane Smith", "isAdmin": false, "hasMatch": true},
-    {"name": "Mike Johnson", "isAdmin": false, "hasMatch": false},
-    {"name": "Sarah Williams", "isAdmin": false, "hasMatch": true},
-  ];
 
-  void _copyGroupCode() {
-    Clipboard.setData(ClipboardData(text: groupCode));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Group code copied to clipboard'),
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
-
-  
-
-  void _drawNames() {
-    // TODO: Implement draw names logic
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Draw Names'),
-        content: const Text('Are you sure you want to draw names? This cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // TODO: Implement actual draw logic
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFAD2E2E),
-            ),
-            child: const Text('Draw Names'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _viewMyMatch() {
-    // TODO: Navigate to match details
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('View match functionality coming soon')),
+  @override
+  void initState() {
+    super.initState();
+    // Load group details when page opens
+    context.read<GroupInfoBloc>().add(
+      LoadGroupDetailsEvent(groupId: widget.groupId),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFFE8E8),
-      body: SafeArea(
-        child: Stack(
-          children: [
+    return BlocListener<GroupInfoBloc, GroupInfoState>(
+      listener: (context, state) {
+        if (state is NamesDrawnSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Reload group details
+          context.read<GroupInfoBloc>().add(
+            LoadGroupDetailsEvent(groupId: widget.groupId),
+          );
+        } else if (state is GroupInfoError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+            ),
+          );
+        } else if (state is GroupLeftSuccess || state is GroupDeletedSuccess) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFFFE8E8),
+        body: SafeArea(
+          child: BlocBuilder<GroupInfoBloc, GroupInfoState>(
+            builder: (context, state) {
+              if (state is GroupInfoLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (state is GroupInfoLoaded) {
+                return _buildGroupDetails(state);
+              }
+
+              return const Center(child: Text('Failed to load group details'));
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGroupDetails(GroupInfoLoaded state) {
+    final groupData = state.groupData;
+    final members = state.members;
+    final groupCode = groupData['groupCode'] ?? 'N/A';
+    final exchangeDate = groupData['exchangeDate']?.toDate() ?? DateTime.now();
+    final budget = groupData['budget'] ?? 'Not set';
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final isAdmin = groupData['adminId'] == currentUserId;
+    final hasDrawn = groupData['hasDrawn'] ?? false;
+
+    return Stack(
+      children: [
             // Header
             Positioned(
               top: 0,
@@ -111,7 +125,7 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      groupName,
+                      widget.groupName,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 24,
@@ -174,9 +188,14 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
                           _InfoRow(
                             icon: Icons.calendar_today,
                             label: "Exchange Date",
-                            value: exchangeDate,
+                            value: "${exchangeDate.day}/${exchangeDate.month}/${exchangeDate.year}",
                           ),
-                          
+                          const SizedBox(height: 12),
+                          _InfoRow(
+                            icon: Icons.attach_money,
+                            label: "Budget",
+                            value: budget.toString(),
+                          ),
                           const SizedBox(height: 12),
                           Row(
                             children: [
@@ -188,11 +207,14 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
                                 ),
                               ),
                               IconButton(
-                                onPressed: _copyGroupCode,
+                                onPressed: () {
+                                  Clipboard.setData(ClipboardData(text: groupCode));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Group code copied!')),
+                                  );
+                                },
                                 icon: const Icon(Icons.copy, color: Color(0xFFAD2E2E)),
-                                tooltip: 'Copy code',
                               ),
-                              
                             ],
                           ),
                         ],
@@ -201,37 +223,45 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
                     const SizedBox(height: 24),
 
                     // Action Buttons
-                    if (isAdmin) ...[
+                    if (isAdmin && !hasDrawn) ...[
                       ElevatedButton.icon(
-                        onPressed: _drawNames,
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Draw Names'),
+                              content: const Text('Are you sure? This cannot be undone.'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx),
+                                  child: const Text('Cancel'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.pop(ctx);
+                                    context.read<GroupInfoBloc>().add(
+                                      DrawNamesEvent(
+                                        groupId: widget.groupId,
+                                        memberIds: members.map((m) => m.userId).toList(),
+                                      ),
+                                    );
+                                  },
+                                  child: const Text('Draw'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                         icon: const Icon(Icons.shuffle),
                         label: const Text('Draw Names'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFAD2E2E),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
                         ),
                       ),
                       const SizedBox(height: 12),
                     ],
-                    
-                    OutlinedButton.icon(
-                      onPressed: _viewMyMatch,
-                      icon: const Icon(Icons.card_giftcard),
-                      label: const Text('View My Match'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFFAD2E2E),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        side: const BorderSide(color: Color(0xFFAD2E2E), width: 2),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
 
                     // Members List
                     Container(
@@ -260,24 +290,22 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
                           ),
                           const SizedBox(height: 16),
                           ...members.map((member) => _MemberTile(
-                            name: member["name"],
-                            isAdmin: member["isAdmin"],
-                            hasMatch: member["hasMatch"],
+                            name: member.name,
+                            isAdmin: member.isAdmin,
+                            hasMatch: member.hasMatch,
                           )),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
                   ],
                 ),
               ),
             ),
-          ],
-        ),
-      ),
-    );
+          ]
+        );
+      }
   }
-}
+
 
 class _InfoRow extends StatelessWidget {
   final IconData icon;

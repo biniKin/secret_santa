@@ -1,48 +1,8 @@
-import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:secrete_santa/models/group_model.dart';
 import 'package:secrete_santa/models/user_model.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class StorageService {
   final _firestore = FirebaseFirestore.instance;
-  static const String _userKey = 'current_user';
-
-  // ==================== LOCAL STORAGE (SharedPreferences) ====================
-
-  Future<void> saveUserLocally(UserModel user) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userJson = jsonEncode(user.toJson(user));
-      await prefs.setString(_userKey, userJson);
-    } catch (e) {
-      throw 'Error saving user locally: $e';
-    }
-  }
-
-  Future<UserModel?> getUserLocally() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userJson = prefs.getString(_userKey);
-      
-      if (userJson != null) {
-        final userMap = jsonDecode(userJson) as Map<String, dynamic>;
-        return UserModel.fromJson(userMap);
-      }
-      return null;
-    } catch (e) {
-      throw 'Error getting user locally: $e';
-    }
-  }
-
-  Future<void> clearLocalUser() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_userKey);
-    } catch (e) {
-      throw 'Error clearing local user: $e';
-    }
-  }
 
   // ==================== FIRESTORE - USER OPERATIONS ====================
 

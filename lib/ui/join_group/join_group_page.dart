@@ -22,40 +22,10 @@ class _JoinGroupPageState extends State<JoinGroupPage> {
     super.dispose();
   }
 
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now().add(const Duration(days: 7)),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFFAD2E2E),
-              onPrimary: Colors.white,
-              onSurface: Colors.black,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
-  }
 
-  Future<void> _handleCreateGroup() async {
+  Future<void> _handleJoinGroup() async {
     if (_formKey.currentState!.validate()) {
-      if (_selectedDate == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select an exchange date')),
-        );
-        return;
-      }
+      
 
       setState(() => _isLoading = true);
 
@@ -167,7 +137,8 @@ class _JoinGroupPageState extends State<JoinGroupPage> {
                         TextFormField(
                           controller: _nameController,
                           decoration: InputDecoration(
-                            hintText: "e.g., Office Secret Santa 2024",
+                            hintText: "Friends Secret Santa",
+                            hintStyle: TextStyle(color: Colors.grey),
                             prefixIcon: const Icon(Icons.person_2_outlined, color: Color(0xFFAD2E2E)),
                             filled: true,
                             fillColor: const Color(0xFFFFE8E8),
@@ -211,9 +182,10 @@ class _JoinGroupPageState extends State<JoinGroupPage> {
                        
                         TextFormField(
                           controller: _budgetController,
-                          keyboardType: TextInputType.number,
+                          
                           decoration: InputDecoration(
                             hintText: "e.g SANTA1234",
+                            hintStyle: TextStyle(color: Colors.grey),
                             prefixIcon: const Icon(Icons.code, color: Color(0xFFAD2E2E)),
                             filled: true,
                             fillColor: const Color(0xFFFFE8E8),
@@ -254,7 +226,7 @@ class _JoinGroupPageState extends State<JoinGroupPage> {
                         
                         // Create Button
                         ElevatedButton(
-                          onPressed: _isLoading ? null : _handleCreateGroup,
+                          onPressed: _isLoading ? null : _handleJoinGroup,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFAD2E2E),
                             foregroundColor: Colors.white,

@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:secrete_santa/ui/auth_page/auth_bloc/auth_bloc.dart';
+import 'package:secrete_santa/ui/auth_page/auth_bloc/auth_event.dart';
+import 'package:secrete_santa/ui/auth_page/auth_bloc/auth_state.dart';
 import 'package:secrete_santa/ui/auth_page/login_page.dart';
+import 'package:secrete_santa/ui/home/home_page.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -16,7 +21,6 @@ class _SignupPageState extends State<SignupPage> {
   final _confiPassController = TextEditingController();
   
   bool _isPasswordVisible = false;
-  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -27,27 +31,46 @@ class _SignupPageState extends State<SignupPage> {
     super.dispose();
   }
 
-  Future<void> _handleSignUp() async {
+  void _handleSignUp() {
     if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
-      
-      // TODO: Implement Firebase authentication
-      await Future.delayed(Duration(seconds: 2)); // Placeholder
-      
-      setState(() => _isLoading = false);
+      context.read<AuthBloc>().add(
+        SignUpEvent(
+          name: _nameController.text.trim(),
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Color(0xFFAD2E2E),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(24.0),
-            child: Form(
-              key: _formKey,
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state is AuthAuthenticated) {
+          // Navigate to home page and remove all previous routes
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const HomePage()),
+            (route) => false,
+          );
+        } else if (state is AuthError) {
+          // Show error message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Color(0xFFAD2E2E),
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.all(24.0),
+              child: Form(
+                key: _formKey,
               
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -248,34 +271,39 @@ class _SignupPageState extends State<SignupPage> {
                  
                   SizedBox(height: 40),
                   
-                  // Sign In Button
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _handleSignUp,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Color(0xFFAD2E2E),
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: _isLoading
-                        ? SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFAD2E2E)),
-                            ),
-                          )
-                        : Text(
-                            'Sign Up',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+                  // Sign Up Button
+                  BlocBuilder<AuthBloc, AuthState>(
+                    builder: (context, state) {
+                      final isLoading = state is AuthLoading;
+                      return ElevatedButton(
+                        onPressed: isLoading ? null : _handleSignUp,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Color(0xFFAD2E2E),
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
+                          elevation: 0,
+                        ),
+                        child: isLoading
+                            ? SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFAD2E2E)),
+                                ),
+                              )
+                            : Text(
+                                'Sign Up',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                      );
+                    },
                   ),
                   SizedBox(height: 24),
                   
@@ -307,7 +335,7 @@ class _SignupPageState extends State<SignupPage> {
             ),
           ),
         ),
-      ),
+      ),)
     );
   }
 }
