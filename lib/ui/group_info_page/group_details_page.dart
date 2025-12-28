@@ -372,6 +372,18 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
                           ),
                         ],
                       ),
+                      const SizedBox(height: 8),
+                      const Padding(
+                        padding: EdgeInsets.only(left: 40),
+                        child: Text(
+                          'Share this code to invite others',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
