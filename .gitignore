@@ -43,3 +43,30 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase & Sensitive Files
+**/google-services.json
+**/GoogleService-Info.plist
+**/.firebaserc
+**/firebase.json
+
+# Keystore files - NEVER commit these!
+*.jks
+*.keystore
+android/key.properties
+android/app/upload-keystore.jks
+android/app/debug.keystore
+android/app/release.keystore
+
+# Local configuration
+android/local.properties
+ios/Flutter/flutter_export_environment.sh
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# API Keys and Secrets
+**/secrets.dart
+**/api_keys.dart
