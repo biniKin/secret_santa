@@ -1,15 +1,18 @@
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:secrete_santa/models/user_model.dart';
+import 'package:secrete_santa/services/notification_service.dart';
 
 class DrawService {
   final _firestore = FirebaseFirestore.instance;
+  final _notificationService = NotificationService();
 
   // ==================== DRAW NAMES ====================
 
   Future<Map<String, String>> drawNames({
     required String groupId,
     required List<String> memberIds,
+    required String groupName,
   }) async {
     try {
       if (memberIds.length < 2) {
@@ -34,6 +37,18 @@ class DrawService {
         'drawnAt': FieldValue.serverTimestamp(),
       });
 
+      print('✅ Names drawn successfully for group: $groupName');
+      print('📧 Sending notifications to ${memberIds.length} members...');
+
+      // Send notifications to all members
+      await _notificationService.notifyGroupMembersAboutDraw(
+        groupId: groupId,
+        groupName: groupName,
+        memberIds: memberIds,
+      );
+
+      print('✅ Draw process completed successfully!');
+
       return matches;
     } catch (e) {
       throw 'Error drawing names: $e';
@@ -57,16 +72,17 @@ class DrawService {
 
     while (!hasValidMatches && attempts < maxAttempts) {
       hasValidMatches = true;
-      
+
       for (int i = 0; i < givers.length; i++) {
         if (givers[i] == receivers[i]) {
           hasValidMatches = false;
-          
+
           // Try to swap with next person
           final swapIndex = (i + 1) % receivers.length;
-          
+
           // Make sure the swap doesn't create another self-match
-          if (givers[swapIndex] != receivers[i] && givers[i] != receivers[swapIndex]) {
+          if (givers[swapIndex] != receivers[i] &&
+              givers[i] != receivers[swapIndex]) {
             final temp = receivers[i];
             receivers[i] = receivers[swapIndex];
             receivers[swapIndex] = temp;
@@ -77,7 +93,7 @@ class DrawService {
           }
         }
       }
-      
+
       attempts++;
     }
 
@@ -139,8 +155,11 @@ class DrawService {
       final receiverId = matchData['receiverId'];
 
       // Get receiver's user data
-      final userDoc = await _firestore.collection('users').doc(receiverId).get();
-      
+      final userDoc = await _firestore
+          .collection('users')
+          .doc(receiverId)
+          .get();
+
       if (userDoc.exists) {
         return UserModel.fromJson(userDoc.data()!);
       }
@@ -235,13 +254,18 @@ class DrawService {
   Future<Map<String, String>> redrawNames({
     required String groupId,
     required List<String> memberIds,
+    required String groupName,
   }) async {
     try {
       // Delete existing matches
       await deleteGroupMatches(groupId);
 
       // Draw new matches
-      return await drawNames(groupId: groupId, memberIds: memberIds);
+      return await drawNames(
+        groupId: groupId,
+        memberIds: memberIds,
+        groupName: groupName,
+      );
     } catch (e) {
       throw 'Error redrawing names: $e';
     }
@@ -278,16 +302,18 @@ class DrawService {
   Future<Map<String, dynamic>> getMatchStatistics(String groupId) async {
     try {
       final matches = await getGroupMatches(groupId);
-      
+
       final totalMatches = matches.length;
-      final revealedMatches = matches.where((m) => m['hasRevealed'] == true).length;
+      final revealedMatches = matches
+          .where((m) => m['hasRevealed'] == true)
+          .length;
       final unrevealedMatches = totalMatches - revealedMatches;
 
       return {
         'totalMatches': totalMatches,
         'revealedMatches': revealedMatches,
         'unrevealedMatches': unrevealedMatches,
-        'revealPercentage': totalMatches > 0 
+        'revealPercentage': totalMatches > 0
             ? (revealedMatches / totalMatches * 100).toStringAsFixed(1)
             : '0.0',
       };
@@ -306,21 +332,24 @@ class DrawService {
         .limit(1)
         .snapshots()
         .asyncMap((snapshot) async {
-      if (snapshot.docs.isEmpty) {
-        return null;
-      }
+          if (snapshot.docs.isEmpty) {
+            return null;
+          }
 
-      final matchData = snapshot.docs.first.data();
-      final receiverId = matchData['receiverId'];
+          final matchData = snapshot.docs.first.data();
+          final receiverId = matchData['receiverId'];
 
-      final userDoc = await _firestore.collection('users').doc(receiverId).get();
-      
-      if (userDoc.exists) {
-        return UserModel.fromJson(userDoc.data()!);
-      }
+          final userDoc = await _firestore
+              .collection('users')
+              .doc(receiverId)
+              .get();
 
-      return null;
-    });
+          if (userDoc.exists) {
+            return UserModel.fromJson(userDoc.data()!);
+          }
+
+          return null;
+        });
   }
 
   Stream<List<Map<String, dynamic>>> streamGroupMatches(String groupId) {

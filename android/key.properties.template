@@ -1,0 +1,7 @@
+# Copy this file to key.properties and fill in your actual passwords
+# DO NOT commit key.properties to Git!
+
+storePassword=biniKin@0918
+keyPassword=biniKin@0918
+keyAlias=upload
+storeFile=upload-keystore.jks

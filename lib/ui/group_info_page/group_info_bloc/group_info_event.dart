@@ -21,14 +21,16 @@ class LoadGroupDetailsEvent extends GroupInfoEvent {
 class DrawNamesEvent extends GroupInfoEvent {
   final String groupId;
   final List<String> memberIds;
+  final String groupName;
 
   const DrawNamesEvent({
     required this.groupId,
     required this.memberIds,
+    required this.groupName,
   });
 
   @override
-  List<Object?> get props => [groupId, memberIds];
+  List<Object?> get props => [groupId, memberIds, groupName];
 }
 
 // Get User Match Event
@@ -36,10 +38,7 @@ class GetUserMatchEvent extends GroupInfoEvent {
   final String groupId;
   final String userId;
 
-  const GetUserMatchEvent({
-    required this.groupId,
-    required this.userId,
-  });
+  const GetUserMatchEvent({required this.groupId, required this.userId});
 
   @override
   List<Object?> get props => [groupId, userId];
@@ -50,10 +49,7 @@ class LeaveGroupEvent extends GroupInfoEvent {
   final String groupId;
   final String userId;
 
-  const LeaveGroupEvent({
-    required this.groupId,
-    required this.userId,
-  });
+  const LeaveGroupEvent({required this.groupId, required this.userId});
 
   @override
   List<Object?> get props => [groupId, userId];

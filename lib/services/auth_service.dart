@@ -1,10 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:secrete_santa/models/user_model.dart';
 import 'package:secrete_santa/services/storage_service.dart';
+import 'package:secrete_santa/services/notification_service.dart';
 
 class AuthService {
   final _auth = FirebaseAuth.instance;
   final _storageService = StorageService();
+  final _notificationService = NotificationService();
 
   // Get current user
   User? get currentUser => _auth.currentUser;
@@ -23,6 +25,9 @@ class AuthService {
       );
 
       if (userCredential.user != null) {
+        // Save FCM token for push notifications
+        await _notificationService.getAndSaveToken(userCredential.user!.uid);
+
         // Fetch user data from Firestore
         final userData = await _storageService.getUserFromFirestore(
           userCredential.user!.uid,
@@ -66,6 +71,9 @@ class AuthService {
 
         // Update display name
         await userCredential.user!.updateDisplayName(name);
+
+        // Save FCM token for push notifications
+        await _notificationService.getAndSaveToken(userCredential.user!.uid);
 
         return user;
       }

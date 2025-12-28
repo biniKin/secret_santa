@@ -5,9 +5,9 @@ import 'package:secrete_santa/ui/create_group/create_group_page.dart';
 import 'package:secrete_santa/ui/group_info_page/group_details_page.dart';
 import 'package:secrete_santa/ui/home/home_bloc/home_bloc.dart';
 import 'package:secrete_santa/ui/home/home_bloc/home_event.dart';
-
 import 'package:secrete_santa/ui/home/home_bloc/home_state.dart';
 import 'package:secrete_santa/ui/join_group/join_group_page.dart';
+import 'package:secrete_santa/ui/profile_page/profile_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -27,6 +27,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _loadGroups() {
+    if (!mounted) return; // Check if widget is still mounted
     final userId = _authService.currentUser?.uid;
     if (userId != null) {
       context.read<HomeBloc>().add(LoadUserGroupsEvent(userId: userId));
@@ -54,7 +55,10 @@ class _HomePageState extends State<HomePage> {
                     bottomRight: Radius.circular(30),
                   ),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 20,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -73,16 +77,23 @@ class _HomePageState extends State<HomePage> {
                         SizedBox(height: 4),
                         Text(
                           "Spread the holiday cheer",
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                          ),
+                          style: TextStyle(color: Colors.white70, fontSize: 14),
                         ),
                       ],
                     ),
-                    const CircleAvatar(
-                      backgroundColor: Colors.white,
-                      child: Icon(Icons.person, color: Color(0xFFAD2E2E)),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ProfilePage(),
+                          ),
+                        );
+                      },
+                      child: const CircleAvatar(
+                        backgroundColor: Colors.white,
+                        child: Icon(Icons.person, color: Color(0xFFAD2E2E)),
+                      ),
                     ),
                   ],
                 ),
@@ -108,9 +119,13 @@ class _HomePageState extends State<HomePage> {
                             icon: Icons.add_circle_outline,
                             label: "Create Group",
                             onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => const CreateGroupPage()),
-                              ).then((_) => _loadGroups());
+                              Navigator.of(context)
+                                  .push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const CreateGroupPage(),
+                                    ),
+                                  )
+                                  .then((_) => _loadGroups());
                             },
                           ),
                           const SizedBox(width: 16),
@@ -118,9 +133,13 @@ class _HomePageState extends State<HomePage> {
                             icon: Icons.group_add_outlined,
                             label: "Join Group",
                             onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => const JoinGroupPage()),
-                              ).then((_) => _loadGroups());
+                              Navigator.of(context)
+                                  .push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const JoinGroupPage(),
+                                    ),
+                                  )
+                                  .then((_) => _loadGroups());
                             },
                           ),
                         ],
@@ -154,18 +173,26 @@ class _HomePageState extends State<HomePage> {
                               children: state.groups.map((group) {
                                 return _GroupCard(
                                   groupId: group['groupId'] ?? '',
-                                  groupName: group['groupName'] ?? 'Unnamed Group',
-                                  memberCount: (group['members'] as List?)?.length ?? 0,
-                                  exchangeDate: group['exchangeDate']?.toDate() ?? DateTime.now(),
+                                  groupName:
+                                      group['groupName'] ?? 'Unnamed Group',
+                                  memberCount:
+                                      (group['members'] as List?)?.length ?? 0,
+                                  exchangeDate:
+                                      group['exchangeDate']?.toDate() ??
+                                      DateTime.now(),
                                   onTap: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => GroupDetailsPage(
-                                          groupId: group['groupId'] ?? '',
-                                          groupName: group['groupName'] ?? 'Unnamed Group',
-                                        ),
-                                      ),
-                                    ).then((_) => _loadGroups());
+                                    Navigator.of(context)
+                                        .push(
+                                          MaterialPageRoute(
+                                            builder: (_) => GroupDetailsPage(
+                                              groupId: group['groupId'] ?? '',
+                                              groupName:
+                                                  group['groupName'] ??
+                                                  'Unnamed Group',
+                                            ),
+                                          ),
+                                        )
+                                        .then((_) => _loadGroups());
                                   },
                                 );
                               }).toList(),
@@ -177,7 +204,11 @@ class _HomePageState extends State<HomePage> {
                               padding: const EdgeInsets.all(40.0),
                               child: Column(
                                 children: [
-                                  const Icon(Icons.error_outline, size: 60, color: Colors.red),
+                                  const Icon(
+                                    Icons.error_outline,
+                                    size: 60,
+                                    color: Colors.red,
+                                  ),
                                   const SizedBox(height: 16),
                                   Text(
                                     state.message,
@@ -224,10 +255,7 @@ class _HomePageState extends State<HomePage> {
         Text(
           "Create or join a group to start\nyour Secret Santa exchange!",
           textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey.shade500,
-          ),
+          style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
         ),
         const SizedBox(height: 40),
       ],
@@ -354,10 +382,7 @@ class _GroupCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     "$memberCount members • ${exchangeDate.day}/${exchangeDate.month}/${exchangeDate.year}",
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                   ),
                 ],
               ),
@@ -369,4 +394,3 @@ class _GroupCard extends StatelessWidget {
     );
   }
 }
-

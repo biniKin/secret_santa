@@ -8,12 +8,10 @@ class GroupInfoBloc extends Bloc<GroupInfoEvent, GroupInfoState> {
   final GroupService _groupService;
   final DrawService _drawService;
 
-  GroupInfoBloc({
-    GroupService? groupService,
-    DrawService? drawService,
-  })  : _groupService = groupService ?? GroupService(),
-        _drawService = drawService ?? DrawService(),
-        super(const GroupInfoInitial()) {
+  GroupInfoBloc({GroupService? groupService, DrawService? drawService})
+    : _groupService = groupService ?? GroupService(),
+      _drawService = drawService ?? DrawService(),
+      super(const GroupInfoInitial()) {
     on<LoadGroupDetailsEvent>(_onLoadGroupDetails);
     on<DrawNamesEvent>(_onDrawNames);
     on<GetUserMatchEvent>(_onGetUserMatch);
@@ -29,17 +27,24 @@ class GroupInfoBloc extends Bloc<GroupInfoEvent, GroupInfoState> {
     emit(const GroupInfoLoading());
 
     try {
+      print('Loading group details for groupId: ${event.groupId}'); // Debug
+
       final groupData = await _groupService.fetchGroupById(event.groupId);
+      print('Group data fetched: ${groupData != null}'); // Debug
 
       if (groupData == null) {
+        print('Group data is null'); // Debug
         emit(const GroupInfoError(message: 'Group not found'));
         return;
       }
 
+      print('Fetching group members...'); // Debug
       final members = await _groupService.getGroupMembers(event.groupId);
+      print('Members fetched: ${members.length}'); // Debug
 
       emit(GroupInfoLoaded(groupData: groupData, members: members));
     } catch (e) {
+      print('Error in _onLoadGroupDetails: $e'); // Debug
       emit(GroupInfoError(message: e.toString()));
     }
   }
@@ -54,11 +59,15 @@ class GroupInfoBloc extends Bloc<GroupInfoEvent, GroupInfoState> {
       await _drawService.drawNames(
         groupId: event.groupId,
         memberIds: event.memberIds,
+        groupName: event.groupName,
       );
 
-      emit(const NamesDrawnSuccess(
-        message: 'Names have been drawn successfully! Members can now view their matches.',
-      ));
+      emit(
+        const NamesDrawnSuccess(
+          message:
+              'Names have been drawn successfully! All members have been notified.',
+        ),
+      );
 
       // Reload group details
       add(LoadGroupDetailsEvent(groupId: event.groupId));
@@ -71,8 +80,7 @@ class GroupInfoBloc extends Bloc<GroupInfoEvent, GroupInfoState> {
     GetUserMatchEvent event,
     Emitter<GroupInfoState> emit,
   ) async {
-    emit(const GroupInfoLoading());
-
+    // Don't emit loading state - keep the current group details visible
     try {
       final match = await _drawService.getUserMatch(
         event.groupId,
@@ -80,11 +88,14 @@ class GroupInfoBloc extends Bloc<GroupInfoEvent, GroupInfoState> {
       );
 
       if (match != null) {
+        print("match is not null: ${match}");
         emit(UserMatchLoaded(match: match));
       } else {
+        print("match is null");
         emit(const NoMatchFound());
       }
     } catch (e) {
+      print("error on match bloc: ${e.toString()}");
       emit(GroupInfoError(message: e.toString()));
     }
   }

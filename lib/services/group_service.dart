@@ -1,6 +1,5 @@
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:secrete_santa/models/group_model.dart';
 import 'package:secrete_santa/models/user_model.dart';
 import 'package:secrete_santa/services/storage_service.dart';
 
