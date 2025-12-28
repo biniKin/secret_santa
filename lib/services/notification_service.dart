@@ -1,6 +1,8 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 class NotificationService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
@@ -10,6 +12,9 @@ class NotificationService {
 
   // Initialize notifications
   Future<void> initialize() async {
+    // Initialize timezone
+    tz.initializeTimeZones();
+
     // Request permission
     NotificationSettings settings = await _messaging.requestPermission(
       alert: true,
@@ -25,7 +30,11 @@ class NotificationService {
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@drawable/ic_notification');
     const DarwinInitializationSettings iosSettings =
-        DarwinInitializationSettings();
+        DarwinInitializationSettings(
+          requestAlertPermission: true,
+          requestBadgePermission: true,
+          requestSoundPermission: true,
+        );
 
     const InitializationSettings initSettings = InitializationSettings(
       android: androidSettings,
@@ -152,6 +161,105 @@ class NotificationService {
       title: 'Test Notification',
       body: 'This is a test notification from Secret Santa!',
     );
+  }
+
+  // Schedule notification for exchange date reminder
+  Future<void> scheduleExchangeDateReminder({
+    required String groupId,
+    required String groupName,
+    required DateTime exchangeDate,
+  }) async {
+    try {
+      final now = DateTime.now();
+
+      // Calculate the day before exchange date at 9 AM
+      final reminderDate = DateTime(
+        exchangeDate.year,
+        exchangeDate.month,
+        exchangeDate.day - 1, // One day before exchange
+        9, // 9 AM
+        0,
+      );
+
+      // Only schedule if the reminder date is in the future
+      if (reminderDate.isAfter(now)) {
+        await _localNotifications.zonedSchedule(
+          groupId.hashCode, // Use groupId hash as notification ID
+          'Exchange Day Tomorrow! 🎁',
+          'Don\'t forget! The Secret Santa exchange for "$groupName" is tomorrow!',
+          _convertToTZDateTime(reminderDate),
+          const NotificationDetails(
+            android: AndroidNotificationDetails(
+              'secret_santa_channel',
+              'Secret Santa Notifications',
+              channelDescription: 'Notifications for Secret Santa app',
+              importance: Importance.high,
+              priority: Priority.high,
+              icon: '@drawable/ic_notification',
+            ),
+            iOS: DarwinNotificationDetails(),
+          ),
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+          payload: groupId,
+        );
+
+        print(
+          '✅ Scheduled reminder for "$groupName" on ${reminderDate.toString()}',
+        );
+      } else {
+        print('⚠️ Reminder date for "$groupName" has already passed');
+      }
+    } catch (e) {
+      print('❌ Error scheduling exchange date reminder: $e');
+    }
+  }
+
+  // Check all user's groups and schedule reminders
+  Future<void> checkAndScheduleExchangeReminders(String userId) async {
+    try {
+      // Get all groups where user is a member
+      final groupsSnapshot = await _firestore
+          .collection('groups')
+          .where('members', arrayContains: userId)
+          .get();
+
+      for (var doc in groupsSnapshot.docs) {
+        final data = doc.data();
+        final exchangeDate = (data['exchangeDate'] as Timestamp?)?.toDate();
+        final groupName = data['groupName'] as String?;
+        final hasDrawn = data['hasDrawn'] as bool? ?? false;
+
+        if (exchangeDate != null && groupName != null && hasDrawn) {
+          await scheduleExchangeDateReminder(
+            groupId: doc.id,
+            groupName: groupName,
+            exchangeDate: exchangeDate,
+          );
+        }
+      }
+
+      print('Checked and scheduled reminders for user groups');
+    } catch (e) {
+      print('Error checking exchange reminders: $e');
+    }
+  }
+
+  // Helper to convert DateTime to TZDateTime
+  tz.TZDateTime _convertToTZDateTime(DateTime dateTime) {
+    final location = tz.local;
+    return tz.TZDateTime.from(dateTime, location);
+  }
+
+  // Cancel scheduled notification for a group
+  Future<void> cancelExchangeReminder(String groupId) async {
+    try {
+      await _localNotifications.cancel(groupId.hashCode);
+      print('Cancelled reminder for group: $groupId');
+    } catch (e) {
+      print('Error cancelling reminder: $e');
+    }
   }
 }
 

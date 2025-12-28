@@ -1,15 +1,20 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:secrete_santa/services/group_service.dart';
+import 'package:secrete_santa/services/notification_service.dart';
 import 'package:secrete_santa/ui/join_group/join_group_bloc/join_group_event.dart';
 import 'package:secrete_santa/ui/join_group/join_group_bloc/join_group_state.dart';
 
 class JoinGroupBloc extends Bloc<JoinGroupEvent, JoinGroupState> {
   final GroupService _groupService;
+  final NotificationService _notificationService;
 
   JoinGroupBloc({
     GroupService? groupService,
-  })  : _groupService = groupService ?? GroupService(),
-        super(const JoinGroupInitial()) {
+    NotificationService? notificationService,
+  }) : _groupService = groupService ?? GroupService(),
+       _notificationService = notificationService ?? NotificationService(),
+       super(const JoinGroupInitial()) {
     on<JoinGroupSubmitEvent>(_onJoinGroup);
     on<ResetJoinGroupEvent>(_onResetJoinGroup);
   }
@@ -30,10 +35,23 @@ class JoinGroupBloc extends Bloc<JoinGroupEvent, JoinGroupState> {
       final groupData = await _groupService.fetchGroupByCode(event.groupCode);
 
       if (groupData != null) {
-        emit(JoinGroupSuccess(
-          groupId: groupData['groupId'],
-          groupName: groupData['groupName'],
-        ));
+        // Schedule exchange date reminder notification
+        final exchangeDate = (groupData['exchangeDate'] as Timestamp?)
+            ?.toDate();
+        if (exchangeDate != null) {
+          await _notificationService.scheduleExchangeDateReminder(
+            groupId: groupData['groupId'],
+            groupName: groupData['groupName'],
+            exchangeDate: exchangeDate,
+          );
+        }
+
+        emit(
+          JoinGroupSuccess(
+            groupId: groupData['groupId'],
+            groupName: groupData['groupName'],
+          ),
+        );
       } else {
         emit(const JoinGroupError(message: 'Failed to retrieve group details'));
       }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:secrete_santa/services/auth_service.dart';
+import 'package:secrete_santa/services/notification_service.dart';
 import 'package:secrete_santa/ui/create_group/create_group_page.dart';
 import 'package:secrete_santa/ui/group_info_page/group_details_page.dart';
 import 'package:secrete_santa/ui/home/home_bloc/home_bloc.dart';
@@ -19,11 +20,13 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   static const double headerHeight = 200;
   final _authService = AuthService();
+  final _notificationService = NotificationService();
 
   @override
   void initState() {
     super.initState();
     _loadGroups();
+    _scheduleReminders();
   }
 
   void _loadGroups() {
@@ -31,6 +34,13 @@ class _HomePageState extends State<HomePage> {
     final userId = _authService.currentUser?.uid;
     if (userId != null) {
       context.read<HomeBloc>().add(LoadUserGroupsEvent(userId: userId));
+    }
+  }
+
+  void _scheduleReminders() async {
+    final userId = _authService.currentUser?.uid;
+    if (userId != null) {
+      await _notificationService.checkAndScheduleExchangeReminders(userId);
     }
   }
 
